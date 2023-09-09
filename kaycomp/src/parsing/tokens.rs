@@ -1,14 +1,14 @@
-#[derive(Clone, Copy, Debug)]
-pub enum Token<'src> {
+#[derive(Clone, Debug, PartialEq)]
+pub enum Token {
     None,
     /*
      * Type tokens
      */
 
     Boolean(bool),
-    Integer { sign: bool, value: u128 },
+    Integer(u128),
     Float(f64),
-    Str(&'src str),
+    Str(String),
 
     /*
      * Operators
@@ -110,17 +110,17 @@ pub enum Token<'src> {
      * General
      */
 
-    Ident(&'src str),
+    Ident(String),
     Unknown(char)
 }
 
-impl<'src> std::fmt::Display for Token<'src> {
+impl std::fmt::Display for Token {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Token::None => write!(f, "ERRTOK"),
             Token::Unknown(v) => write!(f, "UNK:{}", v),
             Token::Boolean(v) => write!(f, "{}", v),
-            Token::Integer { sign, value } => if *sign { write!(f, "+{}", value) } else { write!(f, "-{}", value) },
+            Token::Integer (value) => write!(f, "{}i", value),
             Token::Float(v) => write!(f, "{}f", v),
             Token::Str(v) => write!(f, "{}", v),
             Token::Plus => write!(f, "+"),

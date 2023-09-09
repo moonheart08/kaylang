@@ -3,12 +3,9 @@ name = "kaycomp"
 version = "0.1.0"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
-[build-dependencies] # <-- We added this and everything after!
-lalrpop = "0.20.0"
-
 [dependencies]
 vm = { path = "../vm" }
-chumsky = { version = "1.0.0-alpha.4", features = ["label", "nightly"] }
+chumsky = { git = "https://github.com/zesterer/chumsky.git", rev = "652353d", features = ["label", "nightly"] }
 ariadne = "0.3.0"
+salsa = { git = "https://github.com/salsa-rs/salsa.git", rev = "d4a94fb", package = "salsa-2022" }
+dashmap = "5.5.3"

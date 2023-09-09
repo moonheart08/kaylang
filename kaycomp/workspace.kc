@@ -9,9 +9,11 @@ public func main()
         x += 1;
     }
 }
-¼ 
+// How am i going to handle early debug fn calls?
+// idea: vm# prefix to indicate it's just a direct vm call?
+vm#print
 
 scoped(bundle) func internal() 
 {
-
+    "\x48\x69"
 }

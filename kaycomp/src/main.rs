@@ -1,25 +1,29 @@
-use chumsky::prelude::*;
-use std::{fs, error::Error};
+use parsing::lex;
+use std::{error::Error, path::PathBuf};
 
 pub mod parsing;
 
-fn main() -> Result<(), Box<dyn Error>> {
-    let file = fs::read_to_string("workspace.kc")?;
+mod jar;
+pub use jar::*;
 
-    let (t, errs) = parsing::lexer().parse(file.as_str()).into_output_errors();
+#[cfg(test)]
+pub mod tests;
+
+fn main() -> Result<(), Box<dyn Error>> {
+    let db = Database::new();
+    let initial = db.input(Into::<PathBuf>::into("workspace.kc"))?;
+
+    let res = lex(&db, initial);
     
-    for err in errs 
+    for err in res.errors(&db)
     {
         println!("{}", err.reason());
     }
 
-    if let Some(tokens) = t 
+    for (token, _) in res.contents(&db) 
     {
-        for (token, _) in tokens {
-            print!("{} ", token);
-        }
+        print!("{} ", token);
     }
-
 
     Ok(())
 }

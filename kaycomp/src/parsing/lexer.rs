@@ -1,9 +1,9 @@
 use chumsky::prelude::*;
 
-use crate::parsing::*;
+use crate::{parsing::*, Db};
 
 pub fn lexer<'src>(
-) -> impl Parser<'src, &'src str, Vec<(Token<'src>, Span)>, extra::Err<Rich<'src, char, Span>>> 
+) -> impl Parser<'src, &'src str, Vec<Spanned<Token>>, extra::Err<Rich<'src, char, Span>>> 
 {
     let bool = 
         just("true").to(Token::Boolean(true))
@@ -18,20 +18,14 @@ pub fn lexer<'src>(
             .map(Token::Float);
 
     let int = custom::<_, &str, _, extra::Err<Rich<'src, char, Span>>>(|inp| {
-        let mut positive = true;
         let offs = inp.offset();
-        
-        if inp.peek() == Some('-') || inp.peek() == Some('+') 
-        {
-            positive = inp.next() == Some('+');
-        }
 
         let text = inp.parse(text::int(10));
         
         if let Ok(v) = text {
             let value = u128::from_str_radix(v, 10).map_err(|_| Rich::<'src, char, Span>::custom(inp.span_since(offs), "Couldn't parse integer."))?;
 
-            return Ok(Token::Integer { sign: positive, value });
+            return Ok(Token::Integer(value));
         }
 
         return Err(Rich::<'src, char, Span>::custom(inp.span_since(offs), "Couldn't parse integer."));
@@ -118,10 +112,29 @@ pub fn lexer<'src>(
     ).or(bool).labelled("keyword").as_context();
 
     let str_ = 
-        just('"')
-            .ignore_then(none_of('"').repeated())
-            .then_ignore(just('"'))
-            .map_slice(Token::Str);
+        none_of(['\\', '"'])
+        .or(
+            just('\\').ignore_then(none_of(['x', 'u'])).map(|x| match x {
+                'n' => '\n',
+                'r' => '\r',
+                't' => '\t',
+                '0' => '\0',
+                v => v,
+            })
+        )
+        .or(
+            just('\\')
+            .ignore_then(just('x').ignored())
+            .then(text::digits(16).exactly(2).slice())
+            .map(|x: ((), &'src str)| {
+                char::from_u32(u8::from_str_radix(x.1, 16).unwrap() as u32).unwrap()
+            })
+        )
+        .repeated()
+        .collect::<String>()
+        .delimited_by(just('"'), just('"'))
+        .map(Token::Str)
+        .labelled("string literal").as_context();
 
     let comment_line = 
         just("//")
@@ -132,7 +145,7 @@ pub fn lexer<'src>(
 
     let values = float.or(int).or(str_);
 
-    let ident = words.or(text::ident().map(Token::Ident));
+    let ident = words.or(text::ident().map(|x: &str| x.to_string()).map(Token::Ident));
 
     let token = values.or(braces).or(symbols).or(ident).labelled("valid token").as_context();
 
@@ -143,4 +156,28 @@ pub fn lexer<'src>(
         .recover_with(skip_then_retry_until(any().ignored(), end()))
         .repeated()
         .collect();
+}
+
+type ParserInput<'tokens, 'src> =
+    chumsky::input::SpannedInput<Token, Span, &'tokens [(Token, Span)]>;
+
+pub type Spanned<T> = (T, Span);
+
+pub fn postlexer<'tokens, 'src: 'tokens>() -> impl Parser<
+    'tokens,
+    ParserInput<'tokens, 'src>,
+    Vec<Spanned<Token>>,
+    extra::Err<Rich<'tokens, Token, Span>>,
+    > + Clone 
+{
+    return any().map_with_span(|x: Token, s| (x, s)).repeated().collect();
+}
+
+#[salsa::tracked]
+pub fn lex(db: &dyn Db, input: File) -> LexedFile 
+{
+    let contents = input.contents(db).clone();
+    let lexer = lexer();
+    let parsed = lexer.parse(&contents);
+    LexedFile::new(db, input.path(db), parsed.to_owned().into_output().unwrap(), parsed.errors().map(|x| x.clone().into_owned()).collect())
 }
