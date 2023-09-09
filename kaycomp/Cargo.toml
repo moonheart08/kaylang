@@ -10,4 +10,5 @@ lalrpop = "0.20.0"
 
 [dependencies]
 vm = { path = "../vm" }
-lalrpop-util = { version = "0.20.0", features = ["lexer"] }
+chumsky = { version = "1.0.0-alpha.4", features = ["label", "nightly"] }
+ariadne = "0.3.0"

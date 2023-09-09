@@ -1,2 +1,3 @@
 [workspace]
 members = ["vm", "kayexec", "kaycomp"]
+resolver = "2"

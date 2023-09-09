@@ -1,5 +1,17 @@
+//! funny syntax workshop
 // Comment.
-pub class Example
+
+public func main() 
+{
+    let i32 x = 1;
+    while (x != 100) 
+    {
+        x += 1;
+    }
+}
+¼ 
+
+scoped(bundle) func internal() 
 {
 
 }
